@@ -1,48 +1,38 @@
 # Teaching Monster
 
+AI-powered educational video generation pipeline using Gemini, Manim, and edge-tts.
+
 ## Pipeline Architecture
 
 ```
-Request → ngrok → FastAPI (Pod)
-         → Gemini API → Transcript + Manim Code
-         → Manim CLI → Video Segments (flash-without-dub)
-         → edge-tts API → Audio + SRT
-         → MoviePy → Final Video → Response
+Request → Gemini API → Transcript + Manim Code
+       → Manim CLI → Video Segments
+       → edge-tts → Audio + SRT
+       → MoviePy → Final Video
 ```
 
 ## Folder Structure
 
 ```
-tmp/
-├── transcript/                   # 文字稿
-│   ├── scenes.json              # Gemini 回傳的完整結構
-│   └── transcripts.json         # 純文字稿陣列
-│
-├── manim/                        # Manim 相關
-│   ├── scripts/                 # LLM 生成的程式碼
-│   │   ├── scene_1.py
-│   │   ├── scene_2.py
-│   │   └── ...
-│   └── flash-without-dub/       # 原始影片（無配音）
-│       ├── 1.mp4
-│       ├── 2.mp4
-│       └── ...
-│
-├── audio/                       # TTS 音訊
-│   ├── 1.mp3
-│   ├── 2.mp3
-│   └── ...
-│
-├── subtitle/                    # SRT 字幕
-│   ├── 1.srt
-│   ├── 2.srt
-│   └── ...
-│
-└── final/                       # 最終合成（中繼）
-    └── final_video.mp4
+src/
+├── gemini_client.py       # Gemini API wrapper
+├── content_generator.py   # Generates transcript + Manim code
+├── manim_renderer.py     # Renders Manim code to video
+├── server.py             # FastAPI REST API
+├── config_schema.py      # Configuration schema
+└── tts/
+    └── tts.py            # edge-tts for audio + SRT
 
-output/                         # 最終輸出
-└── final_video.mp4
+scripts/
+└── T2V_pipeline.py       # Pipeline orchestration
+
+tests/
+├── test_gemini_client.py
+├── test_manim_renderer.py
+└── test_tts.py
+
+config/
+└── default.yaml          # Configuration file
 ```
 
 ## APIs Used
@@ -65,7 +55,12 @@ output/                         # 最終輸出
 
 ```bash
 pip install -r requirements.txt
-pip install edge-tts
+```
+
+## Running Tests
+
+```bash
+pytest tests/ -v
 ```
 
 ## Running the Pipeline
@@ -102,19 +97,9 @@ llm:
   default_model: gemini-2.5-pro
   default_temperature: 0.7
   default_max_tokens: 8192
+  api_key: YOUR_API_KEY
 
 output:
   tmp_dir: ./tmp/
   final_video_dir: ./output
 ```
-
-## Module Structure
-
-| Module | Description |
-|--------|-------------|
-| `src/gemini_client.py` | Gemini API wrapper |
-| `src/content_generator.py` | Generates transcript + Manim code |
-| `src/manim_renderer.py` | Renders Manim code to video |
-| `src/tts/tts.py` | edge-tts for audio + SRT |
-| `scripts/T2V_pipeline.py` | Pipeline orchestration |
-| `src/server.py` | FastAPI REST API |
