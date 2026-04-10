@@ -1,8 +1,13 @@
 """
 FastAPI server for video generation API.
 
-This server implements the POST /v1/video/generate endpoint as specified
-in docs/api/video-generation.md
+This server implements the POST /v1/video/generate endpoint.
+
+New Architecture (all API-based):
+1. Gemini API → transcript + manim code
+2. Manim CLI → video segments
+3. edge-tts API → audio (no ASR)
+4. MoviePy → final video
 """
 
 import asyncio

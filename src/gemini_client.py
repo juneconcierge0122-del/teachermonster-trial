@@ -1,8 +1,22 @@
 from typing import Optional
 
 from google import genai
+from google.genai import types
+from pydantic import BaseModel
 
 from src.config_schema import AppConfig, LLMConfig
+
+
+class SceneContent(BaseModel):
+    """Structured output for a single scene."""
+    transcript: str
+    manim_code: str
+    description: str
+
+
+class ContentGenerationOutput(BaseModel):
+    """Structured output for content generation."""
+    scenes: list[SceneContent]
 
 
 class GeminiClient:
@@ -72,6 +86,79 @@ class GeminiClient:
             },
         )
         return response.text
+
+    def generate_content(
+        self,
+        requirement_prompt: str,
+        persona_prompt: str,
+        model: Optional[str] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> ContentGenerationOutput:
+        """
+        Generate transcript and Manim code from requirement and persona.
+        Uses plain text generation + manual JSON parsing (more compatible).
+        """
+        assert self.is_loaded, "Call load() first"
+
+        prompt = f"""
+You are an expert instructional designer and animation creator.
+Generate a teaching video content with the following:
+
+## Requirement
+{requirement_prompt}
+
+## Persona
+{persona_prompt}
+
+## Output Format
+Generate ONLY valid JSON (no markdown, no explanation). Each scene must contain:
+- "transcript": The narration script for this scene (natural, conversational)
+- "manim_code": Complete Python code for Manim scene (use Manim Community syntax)
+- "description": Brief description of what this scene shows
+
+Example format:
+{{
+  "scenes": [
+    {{
+      "transcript": "...",
+      "manim_code": "...",
+      "description": "..."
+    }}
+  ]
+}}
+
+Guidelines for Manim code:
+- Use from manim import *
+- Define a class inheriting from Scene
+- Keep code self-contained and runnable
+
+Guidelines for transcript:
+- Match the visual content
+- Be engaging and clear
+- 2-4 sentences per scene typical
+"""
+        response = self.client.models.generate_content(
+            model=model or self.config.default_model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=temperature or self.config.default_temperature,
+                max_output_tokens=max_tokens or self.config.default_max_tokens,
+            ),
+        )
+        
+        import json
+        import re
+        
+        text = response.text
+        
+        json_match = re.search(r'\{[\s\S]*\}', text)
+        if json_match:
+            json_str = json_match.group()
+            data = json.loads(json_str)
+            return ContentGenerationOutput(**data)
+        
+        raise ValueError(f"Could not parse JSON from response: {text[:500]}")
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ logging:
 
 llm:
   provider: gemini
-  default_model: gemini-3-flash-preview
+  default_model: gemma-4-26b-a4b-it
   default_temperature: 0.7
   default_max_tokens: 8192
 
